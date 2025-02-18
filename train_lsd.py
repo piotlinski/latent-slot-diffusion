@@ -40,7 +40,7 @@ from einops import rearrange, reduce, repeat
 from src.models.backbone import UNetEncoder
 from src.models.slot_attn import MultiHeadSTEVESA
 from src.models.unet_with_pos import UNet2DConditionModelWithPos
-from src.data.dataset import GlobDataset
+from src.data.dataset import DetDiffDataset, GlobDataset
 
 from src.parser import parse_args
 
@@ -139,7 +139,7 @@ def log_validation(
             pixel_values_recon = vae.decode(model_input).sample
 
             if args.backbone_config == "pretrain_dino":
-                pixel_values_vit = batch["pixel_values_vit"].to(device=accelerator.device, 
+                pixel_values_vit = batch["pixel_values_vit"].to(device=accelerator.device,
                                                                 dtype=weight_dtype)
                 feat = backbone(pixel_values_vit)
             else:
@@ -158,7 +158,7 @@ def log_validation(
 
         grid_image = colorizer.get_heatmap(img=(pixel_values * 0.5 + 0.5),
                                            attn=reduce(
-                                               attn[:, 0], 'b num_h (h w) s -> b s h w', h=int(np.sqrt(attn.shape[-2])), 
+                                               attn[:, 0], 'b num_h (h w) s -> b s h w', h=int(np.sqrt(attn.shape[-2])),
                                                reduction='mean'
                                            ),
                                            recon=[pixel_values_recon * 0.5 + 0.5, images_gen])
@@ -248,7 +248,7 @@ def main(args):
 
     vae = AutoencoderKL.from_pretrained(
         args.pretrained_model_name, subfolder="vae")
-    
+
     if os.path.exists(args.backbone_config):
         train_backbone = True
         backbone_config = UNetEncoder.load_config(args.backbone_config)
@@ -264,7 +264,7 @@ def main(args):
             def forward(self, x):
                 enc_out = self.dinov2.forward_features(x)
                 return rearrange(
-                    enc_out["x_norm_patchtokens"], 
+                    enc_out["x_norm_patchtokens"],
                     "b (h w ) c -> b c h w",
                     h=int(np.sqrt(enc_out["x_norm_patchtokens"].shape[-2]))
                 )
@@ -344,7 +344,7 @@ def main(args):
             pass
     if not train_unet:
         unet.requires_grad_(False)
-        
+
     if args.enable_xformers_memory_efficient_attention:
         if is_xformers_available():
             import xformers
@@ -436,21 +436,22 @@ def main(args):
         weight_decay=args.adam_weight_decay,
         eps=args.adam_epsilon,
     )
-    
-    # implement your lr_sceduler here, here I use constant functions as 
+
+    # implement your lr_sceduler here, here I use constant functions as
     # the template for your reference
     lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer, lr_lambda=[lambda _: 1, lambda _: 1] if train_unet else [lambda _: 1]
         )
 
-    train_dataset = GlobDataset(
+    train_dataset = DetDiffDataset(
         root=args.dataset_root,
         img_size=args.resolution,
         img_glob=args.dataset_glob,
         data_portion=(0.0, args.train_split_portion),
         vit_norm=args.backbone_config == "pretrain_dino",
         random_flip=args.flip_images,
-        vit_input_resolution=args.vit_input_resolution
+        vit_input_resolution=args.vit_input_resolution,
+        files_path="train.txt"
     )
 
     train_dataloader = torch.utils.data.DataLoader(
@@ -461,13 +462,14 @@ def main(args):
     )
 
     # validation set is only for visualization
-    val_dataset = GlobDataset(
+    val_dataset = DetDiffDataset(
         root=args.dataset_root,
         img_size=args.resolution,
         img_glob=args.dataset_glob,
         data_portion=(args.train_split_portion if args.train_split_portion < 1. else 0.9, 1.0),
         vit_norm=args.backbone_config == "pretrain_dino",
-        vit_input_resolution=args.vit_input_resolution
+        vit_input_resolution=args.vit_input_resolution,
+        files_path="test.txt"
     )
 
     # Scheduler and math around the number of training steps.

@@ -6,9 +6,74 @@ import numpy as np
 from PIL import Image
 from torchvision import transforms
 from torch.utils.data import Dataset
+from pathlib import Path
+
+
+class DetDiffDataset(Dataset):
+    def __init__(self, root, img_size, img_glob='*.png',
+                 data_portion=(),  random_data_on_portion=True,
+                vit_norm=False, random_flip=False, vit_input_resolution=448,
+                files_path="train.txt"):
+        super().__init__()
+        self.root = root
+        self.img_size = img_size
+        self.episodes = []
+        self.vit_norm = vit_norm
+        self.random_flip = random_flip
+
+        self.width = img_size
+        self.height = img_size
+
+        self.dataset_dir = Path(self.root)
+
+        files = []
+        with self.dataset_dir.joinpath(files_path).open("r") as fp:
+            files = [str(file.replace("data/", "").strip()) for file in fp]
+
+        self.files = np.array(files).astype(np.bytes_)
+
+        # resize the shortest side to img_size and center crop
+        self.transform = transforms.Compose([
+            transforms.Resize(img_size, interpolation=torchvision.transforms.InterpolationMode.BILINEAR),
+            transforms.CenterCrop(img_size),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5], std=[0.5])
+        ])
+
+        if vit_norm:
+            self.transform_vit = transforms.Compose([
+                transforms.Resize(vit_input_resolution, interpolation=torchvision.transforms.InterpolationMode.BILINEAR),
+                transforms.CenterCrop(vit_input_resolution),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]
+                )
+            ])
+
+    def __len__(self):
+        """Dataset length."""
+        return len(self.files)
+
+    def __getitem__(self, i):
+        example = {}
+        img_path = str(self.files[i], encoding="utf-8")
+        image = Image.open(self.dataset_dir / img_path)
+        if not image.mode == "RGB":
+            image = image.convert("RGB")
+        if self.random_flip:
+            if random.random() > 0.5:
+                image = image.transpose(Image.FLIP_LEFT_RIGHT)
+        pixel_values = self.transform(image)
+        example["pixel_values"] = pixel_values
+        if self.vit_norm:
+            image_vit = self.transform_vit(image)
+            example["pixel_values_vit"] = image_vit
+        return example
+
 
 class GlobDataset(Dataset):
-    def __init__(self, root, img_size, img_glob='*.png', 
+    def __init__(self, root, img_size, img_glob='*.png',
                  data_portion=(),  random_data_on_portion=True,
                 vit_norm=False, random_flip=False, vit_input_resolution=448):
         super().__init__()
@@ -41,7 +106,7 @@ class GlobDataset(Dataset):
                     episodes[int(len(episodes)*data_p[0]):int(len(episodes)*data_p[1])]
 
             self.episodes += episodes
-        
+
         # resize the shortest side to img_size and center crop
         self.transform = transforms.Compose([
             transforms.Resize(img_size, interpolation=torchvision.transforms.InterpolationMode.BILINEAR),
@@ -60,7 +125,7 @@ class GlobDataset(Dataset):
                     std=[0.229, 0.224, 0.225]
                 )
             ])
-    
+
     def __len__(self):
         return len(self.episodes)
 
