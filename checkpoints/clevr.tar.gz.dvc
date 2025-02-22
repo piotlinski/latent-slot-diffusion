@@ -1,0 +1,5 @@
+outs:
+- md5: 117f0edecc8d1c66f4fe47299fd3ed27
+  size: 3838235863
+  hash: md5
+  path: clevr.tar.gz

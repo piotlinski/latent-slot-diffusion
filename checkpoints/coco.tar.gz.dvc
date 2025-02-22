@@ -1,0 +1,5 @@
+outs:
+- md5: 903852090ea4a1ed91178d29db360bc2
+  size: 3818868764
+  hash: md5
+  path: coco.tar.gz
