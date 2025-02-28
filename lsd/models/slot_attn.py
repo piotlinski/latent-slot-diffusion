@@ -11,7 +11,7 @@ from einops.layers.torch import Rearrange
 from diffusers.models import ModelMixin
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 
-from src.models.utils import CartesianPositionalEmbedding
+from lsd.models.utils import CartesianPositionalEmbedding
 
 def is_square(n: float) -> bool:
     if n < 0:
@@ -24,9 +24,9 @@ class MultiHeadSTEVESA(ModelMixin, ConfigMixin):
     # enable diffusers style config and model save/load
     @register_to_config
     def __init__(self, num_iterations, num_slots, num_heads,
-                 input_size, out_size, slot_size, mlp_hidden_size, 
-                 input_resolution, epsilon=1e-8, 
-                 learnable_slot_init=False, 
+                 input_size, out_size, slot_size, mlp_hidden_size,
+                 input_resolution, epsilon=1e-8,
+                 learnable_slot_init=False,
                  bi_level=False):
         super().__init__()
 
@@ -80,10 +80,10 @@ class MultiHeadSTEVESA(ModelMixin, ConfigMixin):
             nn.Linear(slot_size, mlp_hidden_size),
             nn.ReLU(),
             nn.Linear(mlp_hidden_size, slot_size))
-        
+
         self.out_layer_norm = nn.LayerNorm(slot_size)
         self.out_linear = nn.Linear(slot_size, out_size)
-        
+
     def forward(self, inputs):
         slots_collect, attns_collect = self.forward_slots(inputs)
         slots_collect = self.out_layer_norm(slots_collect)
@@ -164,12 +164,12 @@ class MultiHeadSTEVESA(ModelMixin, ConfigMixin):
 if __name__ == "__main__":
     # test
     slot_attn = MultiHeadSTEVESA(
-        num_iterations=3, 
-        num_slots=24, 
+        num_iterations=3,
+        num_slots=24,
         num_heads=1,
         input_size=192, # unet_encoder.config.out_channels
         out_size=192, # unet.config.cross_attention_dim
-        slot_size=192, 
+        slot_size=192,
         mlp_hidden_size=192,
         input_resolution=64, # unet_encoder.config.latent_size
         learnable_slot_init=False

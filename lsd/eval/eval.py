@@ -17,12 +17,12 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from accelerate.logging import get_logger
 from diffusers.utils.import_utils import is_xformers_available
-from src.eval.eval_utils import GlobVideoDatasetWithLabel, ari, get_mask_cosine_distance, \
+from lsd.eval.eval_utils import GlobVideoDatasetWithLabel, ari, get_mask_cosine_distance, \
     hungarian_algorithm, clevrtex_label_reading, movi_label_reading
 from accelerate.utils import set_seed
 
-from src.models.backbone import UNetEncoder
-from src.models.slot_attn import MultiHeadSTEVESA
+from lsd.models.backbone import UNetEncoder
+from lsd.models.slot_attn import MultiHeadSTEVESA
 
 parser = argparse.ArgumentParser()
 
@@ -105,7 +105,7 @@ parser.add_argument(
 parser.add_argument(
     "--linear_prob_train_portion",
     type=float,
-    default=0.83, 
+    default=0.83,
     help=(
         "The portion of the training data (in the testing slots) to use for attribute prediction tasks."
     ),
@@ -159,7 +159,7 @@ if args.data_portion:
 else:
     data_portion = ()
 
-test_dataset = GlobVideoDatasetWithLabel(root=args.dataset_root, 
+test_dataset = GlobVideoDatasetWithLabel(root=args.dataset_root,
                                          max_num_obj=max_num_obj,
                                          img_size=args.resolution,
                                          img_glob=args.dataset_glob,
@@ -257,7 +257,7 @@ with torch.no_grad():
             true_masks.long(), num_classes=max_num_obj + 1).float()
         true_masks_one_hot = rearrange(
             true_masks_one_hot, 'b h w num_classes -> b num_classes h w')
- 
+
         cost_matrix = get_mask_cosine_distance(
             true_masks_one_hot[..., None, :, :], attns_one_hot[..., None, :, :])  # attns or attns_one_hot
 
@@ -350,7 +350,7 @@ label_continuous_dict = {
     k: torch.stack(v, dim=0).to(device=accelerator.device, dtype=weight_dtype) for k, v in label_continuous_dict.items()
 }
 # normalize each dimension to aproximately [-1, 1]
-# we didn't do it in the paper but realized one 
+# we didn't do it in the paper but realized one
 # should use it to get better performance results
 for k, v in label_continuous_dict.items():
     v_min = v.min(dim=0, keepdim=True)[0]

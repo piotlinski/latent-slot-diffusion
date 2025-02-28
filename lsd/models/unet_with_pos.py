@@ -11,9 +11,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from diffusers.models.unet_2d_condition import UNet2DConditionModel
 from diffusers.models.unet_2d_blocks import CrossAttnDownBlock2D, CrossAttnUpBlock2D, \
     UNetMidBlock2DCrossAttn, UNetMidBlock2DSimpleCrossAttn
-from src.models.utils import CartesianPositionalEmbedding, SinCosPositionalEmbedding2D, \
+from lsd.models.utils import CartesianPositionalEmbedding, SinCosPositionalEmbedding2D, \
     LearnedPositionalEmbedding1D
-    
+
 def get_pos_emb(dim, resolution, pos_type):
 
     if pos_type == 'cartesian':
@@ -54,7 +54,7 @@ def hack_unet_for_pos(unet, pos_type='cartesian'):
         else:
             resolutions["up_blocks"].append(resolutions["up_blocks"][-1])
     resolutions["up_blocks"] = resolutions["up_blocks"][:-1]
-        
+
     for block_name in blocks_to_add_pos:
         blocks = getattr(unet, block_name)
         resolution_blocks = resolutions[block_name]
@@ -79,11 +79,11 @@ def hack_unet_for_pos(unet, pos_type='cartesian'):
                             return out
 
                         bound_method = forward_with_pos.__get__(
-                            transformer_block.attn1, 
+                            transformer_block.attn1,
                             transformer_block.attn1.__class__
                         )
                         setattr(transformer_block.attn1, 'forward', bound_method)
-                        
+
                         transformer_block.attn2.pos_emb = get_pos_emb(
                             dim=transformer_block.attn2.to_q.in_features,
                             resolution=resolution_blocks[block_idx],
@@ -98,7 +98,7 @@ def hack_unet_for_pos(unet, pos_type='cartesian'):
                             return out
 
                         bound_method = forward_with_pos.__get__(
-                            transformer_block.attn2, 
+                            transformer_block.attn2,
                             transformer_block.attn2.__class__
                         )
                         setattr(transformer_block.attn2, 'forward', bound_method)
@@ -106,7 +106,7 @@ def hack_unet_for_pos(unet, pos_type='cartesian'):
 
 class UNet2DConditionModelWithPos(UNet2DConditionModel):
 
-    # since it is inherited from UNet2DConditionModel, it supports options like 
+    # since it is inherited from UNet2DConditionModel, it supports options like
     # enable_gradient_checkpointing and enable_xformers_memory_efficient_attention
     # for efficient training and inference
     _supports_gradient_checkpointing = True
@@ -170,9 +170,9 @@ if __name__ == "__main__":
             "DownBlock2D",
         ),
         up_block_types = (
-            "UpBlock2D", 
-            "CrossAttnUpBlock2D", 
-            "CrossAttnUpBlock2D", 
+            "UpBlock2D",
+            "CrossAttnUpBlock2D",
+            "CrossAttnUpBlock2D",
             "CrossAttnUpBlock2D"
         ),
         block_out_channels = (192, 384, 768, 768),

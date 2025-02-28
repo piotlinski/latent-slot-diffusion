@@ -37,14 +37,14 @@ from diffusers.utils.import_utils import is_xformers_available
 
 from einops import rearrange, reduce, repeat
 
-from src.models.backbone import UNetEncoder
-from src.models.slot_attn import MultiHeadSTEVESA
-from src.models.unet_with_pos import UNet2DConditionModelWithPos
-from src.data.dataset import DetDiffDataset, GlobDataset
+from lsd.models.backbone import UNetEncoder
+from lsd.models.slot_attn import MultiHeadSTEVESA
+from lsd.models.unet_with_pos import UNet2DConditionModelWithPos
+from lsd.data.dataset import DetDiffDataset, GlobDataset
 
-from src.parser import parse_args
+from lsd.parser import parse_args
 
-from src.models.utils import ColorMask
+from lsd.models.utils import ColorMask
 
 if is_wandb_available():
     import wandb

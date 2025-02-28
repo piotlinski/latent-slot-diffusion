@@ -42,13 +42,13 @@ from torch.utils.data import DataLoader
 from torchvision.utils import make_grid
 from accelerate.logging import get_logger
 from diffusers.utils.import_utils import is_xformers_available
-from src.eval.eval_utils import GlobVideoDatasetWithLabel, ari, get_mask_cosine_distance, \
+from lsd.eval.eval_utils import GlobVideoDatasetWithLabel, ari, get_mask_cosine_distance, \
     hungarian_algorithm, clevrtex_label_reading, movi_label_reading
 from accelerate.utils import ProjectConfiguration, set_seed
 
-from src.models.utils import ColorMask
-from src.models.backbone import UNetEncoder
-from src.models.slot_attn import MultiHeadSTEVESA
+from lsd.models.utils import ColorMask
+from lsd.models.backbone import UNetEncoder
+from lsd.models.slot_attn import MultiHeadSTEVESA
 
 parser = argparse.ArgumentParser()
 
@@ -157,7 +157,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 class GlobDataset(Dataset):
-    def __init__(self, coco_dir="/path_to_coco/", coco_split="val2017", 
+    def __init__(self, coco_dir="/path_to_coco/", coco_split="val2017",
                 img_size=256, vit_input_resolution=448):
         super().__init__()
 
@@ -191,7 +191,7 @@ class GlobDataset(Dataset):
             )
         ])
 
-    
+
     def __len__(self):
         return len(self.imgs_info)
 
@@ -248,7 +248,7 @@ else:
         def forward(self, x):
             enc_out = self.dinov2.forward_features(x)
             return rearrange(
-                enc_out["x_norm_patchtokens"], 
+                enc_out["x_norm_patchtokens"],
                 "b (h w ) c -> b c h w",
                 h=int(np.sqrt(enc_out["x_norm_patchtokens"].shape[-2]))
             )
@@ -348,7 +348,7 @@ with torch.no_grad():
 
         grid_image = colorizer.get_heatmap(img=(pixel_values * 0.5 + 0.5),
                                            attn=reduce(
-                                               attns, 'b num_h (h w) s -> b s h w', h=int(np.sqrt(attns.shape[-2])), 
+                                               attns, 'b num_h (h w) s -> b s h w', h=int(np.sqrt(attns.shape[-2])),
                                                reduction='mean'
                                            ),
                                            recon=[])
